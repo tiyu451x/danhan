@@ -1,0 +1,1 @@
+# Characters assets\n\nPut the future characters assets in this folder.\n

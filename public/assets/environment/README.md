@@ -1,0 +1,1 @@
+# Environment assets\n\nPut the future environment assets in this folder.\n
