@@ -8,6 +8,43 @@
   padding: 0 16px;
   background: var(--color-panel);
   border-bottom: 1px solid var(--color-hairline);
+  transform: translateY(0);
+  transition: transform 420ms var(--ease-glitch);
+}
+
+/* rolled up out of view once gameplay starts — see .top-bar__tail below */
+.top-bar--hidden {
+  transform: translateY(-100%);
+}
+
+/* the small ribbon tail left hanging so the bar can be pulled back down */
+.top-bar__tail {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 21;
+  width: 52px;
+  height: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brass);
+  color: var(--color-ink);
+  border: 1px solid var(--color-brass);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  transition: top 420ms var(--ease-glitch), background 150ms ease;
+}
+
+.top-bar__tail:hover {
+  background: var(--color-brass-bright);
+}
+
+.top-bar__tail--open {
+  top: 48px;
 }
 
 .top-bar__brand {

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import CutsceneGame from '../game/CutsceneGame'
+import GameStage from '../game/GameStage'
 import '../styles/MainMenu.css'
 
-type Phase = 'hero' | 'credits' | 'cutscene'
+export type Phase = 'hero' | 'credits' | 'cutscene'
 
 const TRANSITION_MS = 700
 const CREDITS_AUTOPLAY_MS = 9000
@@ -13,12 +13,22 @@ const LOREM =
   'lorem malesuada dui, vitae congue leo justo ac massa. Suspendisse potenti. ' +
   'Nulla facilisi. Curabitur non nisi at lacus dictum bibendum.'
 
-function MainMenu() {
+interface MainMenuProps {
+  /** Lets the top bar auto-hide once the player leaves the hero screen. */
+  onPhaseChange?: (phase: Phase) => void
+}
+
+function MainMenu({ onPhaseChange }: MainMenuProps) {
   const [phase, setPhase] = useState<Phase>('hero')
   const [veilOpacity, setVeilOpacity] = useState(0)
   const [autoplayProgress, setAutoplayProgress] = useState(0)
-  const transitionTimer = useRef<number | undefined>(undefined)
-  const autoplayRaf = useRef<number | undefined>(undefined)
+  const transitionTimer = useRef<number>()
+  const autoplayRaf = useRef<number>()
+
+  useEffect(() => {
+    onPhaseChange?.(phase)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
 
   const goTo = (next: Phase) => {
     window.clearTimeout(transitionTimer.current)
@@ -109,7 +119,7 @@ function MainMenu() {
         </section>
       )}
 
-      {phase === 'cutscene' && <CutsceneGame onExit={() => goTo('hero')} />}
+      {phase === 'cutscene' && <GameStage onExit={() => goTo('hero')} />}
 
       <div className="main-menu__veil" style={{ opacity: veilOpacity }} />
     </div>

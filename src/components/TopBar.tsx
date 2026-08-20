@@ -5,12 +5,23 @@ import '../styles/TopBar.css'
 interface TopBarProps {
   view: AppView
   onNavigate: (view: AppView) => void
+  /** true once gameplay is running — rolls the bar up out of the way. */
+  autoHide?: boolean
 }
 
-function TopBar({ view, onNavigate }: TopBarProps) {
+function TopBar({ view, onNavigate, autoHide = false }: TopBarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [pulledDown, setPulledDown] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // whenever auto-hide switches on (play just started) or off (back to a
+  // calm screen like the hero or archives), forget any manual pull
+  useEffect(() => {
+    setPulledDown(false)
+  }, [autoHide])
+
+  const hidden = autoHide && !pulledDown
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -54,8 +65,9 @@ function TopBar({ view, onNavigate }: TopBarProps) {
   }
 
   return (
-    <header className="top-bar">
-      <div className="top-bar__brand">
+    <>
+      <header className={`top-bar${hidden ? ' top-bar--hidden' : ''}`}>
+        <div className="top-bar__brand">
         <span className="top-bar__brand-mark">緬</span>
         <span className="top-bar__brand-name">FRAGMEN — Kota Madiun</span>
       </div>
@@ -112,7 +124,20 @@ function TopBar({ view, onNavigate }: TopBarProps) {
           )}
         </div>
       </div>
-    </header>
+      </header>
+
+      {autoHide && (
+        <button
+          type="button"
+          className={`top-bar__tail${hidden ? '' : ' top-bar__tail--open'}`}
+          onClick={() => setPulledDown((v) => !v)}
+          aria-label={hidden ? 'Show menu bar' : 'Hide menu bar'}
+          title={hidden ? 'Show menu bar' : 'Hide menu bar'}
+        >
+          <ChevronIcon open={!hidden} />
+        </button>
+      )}
+    </>
   )
 }
 
