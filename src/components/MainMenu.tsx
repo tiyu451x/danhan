@@ -17,8 +17,8 @@ function MainMenu() {
   const [phase, setPhase] = useState<Phase>('hero')
   const [veilOpacity, setVeilOpacity] = useState(0)
   const [autoplayProgress, setAutoplayProgress] = useState(0)
-  const transitionTimer = useRef<number>()
-  const autoplayRaf = useRef<number>()
+  const transitionTimer = useRef<number | undefined>(undefined)
+  const autoplayRaf = useRef<number | undefined>(undefined)
 
   const goTo = (next: Phase) => {
     window.clearTimeout(transitionTimer.current)

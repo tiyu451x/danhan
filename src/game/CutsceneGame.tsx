@@ -9,7 +9,7 @@ interface CutsceneGameProps {
 
 function CutsceneGame({ onExit }: CutsceneGameProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const gameRef = useRef<Phaser.Game>()
+  const gameRef = useRef<Phaser.Game | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -28,7 +28,7 @@ function CutsceneGame({ onExit }: CutsceneGameProps) {
 
     return () => {
       gameRef.current?.destroy(true)
-      gameRef.current = undefined
+      gameRef.current = null
     }
   }, [])
 
