@@ -6,6 +6,9 @@ const CHASER_NAMES: Record<number, string> = {
   0xdb8a3d: 'Amber glitch',
   0x8a5cff: 'Violet glitch',
   0x34d1c4: 'Teal glitch',
+  0xf0c45c: 'Gold interceptor',
+  0x39a8ff: 'Cyan siren',
+  0xff55b8: 'Magenta blocker',
 }
 
 interface BattleIntroData {
