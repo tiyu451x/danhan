@@ -137,7 +137,7 @@ export default class PlaceholderCutsceneScene extends Phaser.Scene {
       onComplete: () => {
         this.cameras.main.fadeOut(180, 10, 13, 18)
         this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-          this.scene.start('MadiunOverworld')
+          this.scene.start('ChaseIntro')
         })
       },
     })

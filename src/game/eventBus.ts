@@ -9,7 +9,7 @@ import Phaser from 'phaser'
  */
 export const eventBus = new Phaser.Events.EventEmitter()
 
-export type StageKey = 'cutscene' | 'overworld'
+export type StageKey = 'cutscene' | 'chase-intro' | 'overworld'
 
 export interface StageChangeEvent {
   stage: StageKey
