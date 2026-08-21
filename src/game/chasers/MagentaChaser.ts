@@ -10,11 +10,7 @@ export class MagentaChaser extends BaseChaser {
   }
 
   update(instance: ChaserInstance, context: ChaserContext) {
-    instance.abilityTimer -= context.delta
-    if (instance.abilityTimer <= 0 && instance.knowledge === 'broad' && context.broadLocation) {
-      instance.abilityTimer = this.definition.abilityCooldown
-      const road = context.getRoadPointNear(context.broadLocation.x, context.broadLocation.y)
-      context.createHazard?.(road.x, road.y, 110, 2800, 0.66)
-    }
+    // All specialists now use the same robust, road-constrained dash.
+    instance.abilityTimer = Math.max(0, instance.abilityTimer - context.delta)
   }
 }

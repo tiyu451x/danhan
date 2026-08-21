@@ -1,4 +1,3 @@
-import Phaser from 'phaser'
 import { BaseChaser } from './BaseChaser'
 import type { ChaserContext, ChaserInstance } from './types'
 
@@ -11,8 +10,7 @@ export class AmberChaser extends BaseChaser {
   }
 
   update(instance: ChaserInstance, context: ChaserContext) {
-    // Dash timing and motion are shared by the five dash specialists in the scene.
-    void instance
-    void context
+    // All specialists now use the same robust, road-constrained dash.
+    instance.abilityTimer = Math.max(0, instance.abilityTimer - context.delta)
   }
 }

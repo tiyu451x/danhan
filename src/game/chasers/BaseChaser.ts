@@ -16,6 +16,8 @@ export abstract class BaseChaser {
     const body = sprite.body as Phaser.Physics.Arcade.Body
     body.setSize(20 * this.definition.scale, 14 * this.definition.scale)
     body.setOffset((24 - 20) * this.definition.scale / 2, 16 * this.definition.scale)
+    body.setBounce(0, 0)
+    body.setDrag(0, 0)
 
     return {
       sprite,

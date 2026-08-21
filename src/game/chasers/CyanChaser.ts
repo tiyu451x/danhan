@@ -10,11 +10,7 @@ export class CyanChaser extends BaseChaser {
   }
 
   update(instance: ChaserInstance, context: ChaserContext) {
-    instance.abilityTimer -= context.delta
-    if (instance.abilityTimer <= 0 && instance.knowledge !== 'none') {
-      instance.abilityTimer = this.definition.abilityCooldown
-      context.emitScreenEffect?.('siren', 0.12, 900)
-      context.alertAll(instance.sprite)
-    }
+    // All specialists now use the same robust, road-constrained dash.
+    instance.abilityTimer = Math.max(0, instance.abilityTimer - context.delta)
   }
 }

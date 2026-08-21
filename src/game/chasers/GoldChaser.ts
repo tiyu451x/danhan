@@ -1,4 +1,3 @@
-import Phaser from 'phaser'
 import { BaseChaser } from './BaseChaser'
 import type { ChaserContext, ChaserInstance } from './types'
 
@@ -11,15 +10,7 @@ export class GoldChaser extends BaseChaser {
   }
 
   update(instance: ChaserInstance, context: ChaserContext) {
-    instance.abilityTimer -= context.delta
-    if (instance.knowledge !== 'broad' || instance.abilityTimer > 0 || !context.broadLocation) return
-    instance.abilityTimer = this.definition.abilityCooldown
-    const player = context.player
-    const body = player.body as Phaser.Physics.Arcade.Body
-    const vx = body.velocity.x
-    const vy = body.velocity.y
-    const prediction = 380
-    instance.searchTarget = context.getRoadPointNear(context.broadLocation.x + vx * (prediction / 1000), context.broadLocation.y + vy * (prediction / 1000))
-    instance.state = 'search'
+    // All specialists now use the same robust, road-constrained dash.
+    instance.abilityTimer = Math.max(0, instance.abilityTimer - context.delta)
   }
 }

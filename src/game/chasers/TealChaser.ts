@@ -10,9 +10,7 @@ export class TealChaser extends BaseChaser {
   }
 
   update(instance: ChaserInstance, context: ChaserContext) {
-    instance.abilityTimer -= context.delta
-    if (instance.knowledge !== 'broad' || instance.abilityTimer > 0 || !context.broadLocation) return
-    instance.abilityTimer = this.definition.abilityCooldown
-    context.createHazard?.(context.broadLocation.x, context.broadLocation.y, 82, 2200, 0.48)
+    // All specialists now use the same robust, road-constrained dash.
+    instance.abilityTimer = Math.max(0, instance.abilityTimer - context.delta)
   }
 }
