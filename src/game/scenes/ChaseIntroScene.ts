@@ -615,10 +615,15 @@ export default class ChaseIntroScene extends Phaser.Scene {
     if (dashStart && time >= dashStart) sprite.setData('dashStart', 0)
 
     if (dashUntil && dashVelocity && time < dashUntil) {
-      // If Phaser reports contact, immediately cancel rather than repeatedly
-      // pushing the body into the wall.
-      if (body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down ||
-          body.touching.left || body.touching.right || body.touching.up || body.touching.down) {
+      // Cancel only for a NEW collision in the direction of travel. `touching`
+      // is intentionally not used: its previous-frame value used to cancel a
+      // dash immediately after its telegraph.
+      const hitDashWall =
+        (dashVelocity.x < 0 && body.blocked.left) ||
+        (dashVelocity.x > 0 && body.blocked.right) ||
+        (dashVelocity.y < 0 && body.blocked.up) ||
+        (dashVelocity.y > 0 && body.blocked.down)
+      if (hitDashWall) {
         body.setVelocity(0, 0)
         sprite.setData('dashUntil', 0)
         sprite.setData('dashVelocity', null)
@@ -659,16 +664,16 @@ export default class ChaseIntroScene extends Phaser.Scene {
     // Pac-Man-like: turn at intersections instead of cutting through blocks.
     const edgeDistance = Phaser.Math.Distance.Between(sprite.x, sprite.y, directionTarget.x, directionTarget.y)
     const dashDistance = Math.min(Math.max(edgeDistance - 18, 48), 300)
-    const telegraphMs = 280
-    const dashSpeed = Math.max(instance.definition.chaseSpeed * 1.95, 320)
+    const telegraphMs = 500
+    const dashSpeed = Math.max(instance.definition.chaseSpeed * 1.75, 300)
     const dashMs = (dashDistance / dashSpeed) * 1000
 
     instance.abilityTimer = instance.definition.abilityCooldown
     sprite.setData('dashStart', time + telegraphMs)
     sprite.setData('dashUntil', time + telegraphMs + dashMs)
     sprite.setData('dashVelocity', { x: direction.x * dashSpeed, y: direction.y * dashSpeed })
-    this.showDashLine(sprite, Phaser.Math.Angle.Between(sprite.x, sprite.y, directionTarget.x, directionTarget.y), dashDistance, instance.definition.color, telegraphMs)
-    this.emitScreenEffect('dashWarning', 0.12, telegraphMs)
+    this.showDashLine(sprite, Phaser.Math.Angle.Between(sprite.x, sprite.y, directionTarget.x, directionTarget.y), dashDistance, instance.definition.color, telegraphMs + dashMs)
+    this.emitScreenEffect('dashWarning', 0.12, telegraphMs + dashMs)
   }
 
   private getNextPathPoint(fromX: number, fromY: number, toX: number, toY: number) {
@@ -728,8 +733,10 @@ export default class ChaseIntroScene extends Phaser.Scene {
     instance.wanderTimer -= delta
     const d = Phaser.Math.Distance.Between(instance.sprite.x, instance.sprite.y, instance.wanderTarget.x, instance.wanderTarget.y)
     if (instance.wanderTimer <= 0 || d < 28) {
-      instance.wanderTarget = this.broadMemory ? this.pickBroadWanderTarget() : this.pickRoadWanderTarget(instance.sprite.x, instance.sprite.y)
-      instance.wanderTimer = Phaser.Math.Between(900, 2200)
+      // Patrol is autonomous. It does not depend on the player generating a
+      // new movement event or a new memory point.
+      instance.wanderTarget = this.pickRoadWanderTarget(instance.sprite.x, instance.sprite.y)
+      instance.wanderTimer = Phaser.Math.Between(650, 1400)
     }
     this.moveTowardsRoadTarget(instance.sprite, instance.wanderTarget, instance.definition.roamSpeed)
   }
@@ -742,7 +749,7 @@ export default class ChaseIntroScene extends Phaser.Scene {
     }
     if (!instance.searchTarget || Phaser.Math.Distance.Between(instance.sprite.x, instance.sprite.y, instance.searchTarget.x, instance.searchTarget.y) < 28) {
       instance.searchTarget = this.pickBroadWanderTarget()
-      instance.wanderTimer = Phaser.Math.Between(500, 1200)
+      instance.wanderTimer = Phaser.Math.Between(450, 900)
     }
     this.moveTowardsRoadTarget(instance.sprite, instance.searchTarget, instance.definition.roamSpeed * 1.16)
     if (instance.wanderTimer > 0) instance.wanderTimer -= delta
