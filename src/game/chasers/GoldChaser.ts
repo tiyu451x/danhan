@@ -6,7 +6,7 @@ export class GoldChaser extends BaseChaser {
   constructor() {
     super({
       id: 'gold', name: 'Gold · Interceptor', color: 0xf0c45c, scale: 1.15,
-      roamSpeed: 74, chaseSpeed: 172, detectionRadius: 460, broadRadius: 560, abilityCooldown: 4200,
+      roamSpeed: 110, chaseSpeed: 172, detectionRadius: 460, broadRadius: 560, abilityCooldown: 4200, hasDash: true,
     })
   }
 

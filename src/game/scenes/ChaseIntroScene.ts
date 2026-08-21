@@ -4,9 +4,10 @@ import { CHASER_TYPES, type ChaserContext, type ChaserInstance, type KnowledgeMo
 
 const COLS = 9
 const ROWS = 5
-const BLOCK_W = 620
-const BLOCK_H = 520
-const ROAD_W = 140
+// Half-width and half-height makes the overall playable area one quarter of its old area.
+const BLOCK_W = 310
+const BLOCK_H = 260
+const ROAD_W = 70
 const MAP_W = ROAD_W + COLS * (BLOCK_W + ROAD_W)
 const MAP_H = ROAD_W + ROWS * (BLOCK_H + ROAD_W)
 
@@ -129,21 +130,20 @@ export default class ChaseIntroScene extends Phaser.Scene {
     const spawnY = ROAD_W / 2
     this.player = this.createPlayer(spawnX, spawnY)
 
+    const chaserSpawns = this.getChaserSpawnPoints()
     this.horde = CHASER_TYPES.map((ai, i) => {
-      const x = Math.max(30, spawnX - 90 - i * 34)
-      const y = spawnY + (i % 2 === 0 ? -20 : 20)
-      return { ai, instance: ai.createInstance(this, x, y) }
+      const spawn = chaserSpawns[i]
+      const instance = ai.createInstance(this, spawn.x, spawn.y)
+      instance.sprite.setData('slot', i)
+      return { ai, instance }
     })
     this.horde.forEach(({ instance }) => instance.sprite.setDepth(9))
 
     this.physics.add.collider(this.player, this.obstacleGroup)
     this.horde.forEach(({ instance }) => this.physics.add.collider(instance.sprite, this.obstacleGroup))
     this.physics.add.collider(this.player, this.horde.map(({ instance }) => instance.sprite), this.handlePlayerHordeCollide, undefined, this)
-    for (let i = 0; i < this.horde.length; i++) {
-      for (let j = i + 1; j < this.horde.length; j++) {
-        this.physics.add.collider(this.horde[i].instance.sprite, this.horde[j].instance.sprite)
-      }
-    }
+    // Do not make enemies form a traffic jam. Their distinct road targets keep them apart
+    // while overlap lets a flanking enemy pass through another one to set a trap.
 
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H)
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12)
@@ -220,6 +220,18 @@ export default class ChaseIntroScene extends Phaser.Scene {
     }
   }
 
+  private getChaserSpawnPoints() {
+    const x = (col: number) => ROAD_W / 2 + col * (BLOCK_W + ROAD_W)
+    const y = (row: number) => ROAD_W / 2 + row * (BLOCK_H + ROAD_W)
+    // Separate intersections give every chaser room to choose its own opening route.
+    return [
+      new Phaser.Math.Vector2(x(0), y(2)), new Phaser.Math.Vector2(x(2), y(0)),
+      new Phaser.Math.Vector2(x(4), y(5)), new Phaser.Math.Vector2(x(6), y(1)),
+      new Phaser.Math.Vector2(x(8), y(4)), new Phaser.Math.Vector2(x(3), y(3)),
+      new Phaser.Math.Vector2(x(9), y(0)),
+    ]
+  }
+
   private drawDashedLine(start: number, end: number, fixedCoord: number, horizontal: boolean) {
     const dashLen = 30
     const gapLen = 22
@@ -252,10 +264,11 @@ export default class ChaseIntroScene extends Phaser.Scene {
     let exitY = cy
     let facing: HidingSpot['facing'] = 'up'
 
-    if (edge === 0) { x = cx; y = cy - BLOCK_H / 2 - spotSize / 2; exitX = x; exitY = y + 34; facing = 'down' }
-    if (edge === 1) { x = cx + BLOCK_W / 2 + spotSize / 2; exitX = x - 34; exitY = y; facing = 'left' }
-    if (edge === 2) { x = cx; y = cy + BLOCK_H / 2 + spotSize / 2; exitX = x; exitY = y - 34; facing = 'up' }
-    if (edge === 3) { x = cx - BLOCK_W / 2 - spotSize / 2; exitX = x + 34; exitY = y; facing = 'right' }
+    // The exit is the centre of the adjacent road, never a point inside the solid block.
+    if (edge === 0) { x = cx; y = cy - BLOCK_H / 2 - spotSize / 2; exitX = x; exitY = cy - BLOCK_H / 2 - ROAD_W / 2; facing = 'down' }
+    if (edge === 1) { x = cx + BLOCK_W / 2 + spotSize / 2; exitX = cx + BLOCK_W / 2 + ROAD_W / 2; exitY = y; facing = 'left' }
+    if (edge === 2) { x = cx; y = cy + BLOCK_H / 2 + spotSize / 2; exitX = x; exitY = cy + BLOCK_H / 2 + ROAD_W / 2; facing = 'up' }
+    if (edge === 3) { x = cx - BLOCK_W / 2 - spotSize / 2; exitX = cx - BLOCK_W / 2 - ROAD_W / 2; exitY = y; facing = 'right' }
 
     const alcove = this.add.rectangle(x, y, spotSize, spotSize + 8, HIDE_COLOR)
     alcove.setStrokeStyle(2, HIDE_ACCENT, 0.85).setDepth(-5)
@@ -446,7 +459,7 @@ export default class ChaseIntroScene extends Phaser.Scene {
   private exitHide(time: number) {
     this.hidden = false
     this.player.setVisible(true)
-    this.player.setPosition(this.hideExit.x, this.hideExit.y)
+    ;(this.player.body as Phaser.Physics.Arcade.Body).reset(this.hideExit.x, this.hideExit.y)
     this.updateMemoryFromPlayer(time, true)
     this.alertAllChasers(true)
   }
@@ -549,11 +562,26 @@ export default class ChaseIntroScene extends Phaser.Scene {
       ai.update(instance, ctx)
 
       const body = instance.sprite.body as Phaser.Physics.Arcade.Body
+      if (instance.definition.hasDash) this.tryStartDash(instance, time)
+      const dashStart = instance.sprite.getData('dashStart') as number | undefined
       const dashUntil = instance.sprite.getData('dashUntil') as number | undefined
       const dashVelocity = instance.sprite.getData('dashVelocity') as { x: number; y: number } | undefined
-      if (dashUntil && dashVelocity && time < dashUntil) {
-        body.setVelocity(dashVelocity.x, dashVelocity.y)
+      if (dashStart && time < dashStart) {
+        body.setVelocity(0, 0)
         return
+      }
+      if (dashStart && time >= dashStart) {
+        instance.sprite.setData('dashStart', 0)
+      }
+      if (dashUntil && dashVelocity && time < dashUntil) {
+        if (body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down) {
+          // A dash that meets a wall ends immediately, then normal road routing turns away.
+          instance.sprite.setData('dashUntil', 0)
+          instance.sprite.setData('dashVelocity', null)
+        } else {
+          body.setVelocity(dashVelocity.x, dashVelocity.y)
+          return
+        }
       }
       if (dashUntil && time >= dashUntil) {
         instance.sprite.setData('dashUntil', 0)
@@ -569,7 +597,7 @@ export default class ChaseIntroScene extends Phaser.Scene {
 
       if (instance.knowledge === 'exact') {
         instance.state = 'chase'
-        const target = this.exactMemory ?? this.broadMemory
+        const target = this.getChaseTarget(instance)
         if (target) this.moveTowardsRoadTarget(instance.sprite, target, instance.definition.chaseSpeed)
       } else if (instance.knowledge === 'broad') {
         this.runBroadSearch(instance, delta)
@@ -577,6 +605,42 @@ export default class ChaseIntroScene extends Phaser.Scene {
         this.runRoam(instance, delta)
       }
     })
+  }
+
+  private tryStartDash(instance: ChaserInstance, time: number) {
+    const sprite = instance.sprite
+    const existing = sprite.getData('dashStart') as number | undefined
+    const dashUntil = sprite.getData('dashUntil') as number | undefined
+    if (existing || dashUntil || instance.knowledge !== 'exact' || instance.abilityTimer > 0 || this.hidden) return
+    if (!this.hasLineOfSight(sprite.x, sprite.y, this.player.x, this.player.y)) return
+
+    const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, this.player.x, this.player.y)
+    const dashLength = 300
+    const telegraphMs = 650
+    const dashMs = 700
+    const dashSpeed = dashLength / (dashMs / 1000)
+    instance.abilityTimer = instance.definition.abilityCooldown
+    sprite.setData('dashStart', time + telegraphMs)
+    sprite.setData('dashUntil', time + telegraphMs + dashMs)
+    sprite.setData('dashVelocity', { x: Math.cos(angle) * dashSpeed, y: Math.sin(angle) * dashSpeed })
+    this.showDashLine(sprite, angle, dashLength, instance.definition.color, telegraphMs + dashMs)
+    this.emitScreenEffect('dashWarning', 0.16, telegraphMs + dashMs)
+  }
+
+  private getChaseTarget(instance: ChaserInstance) {
+    const remembered = this.exactMemory ?? this.broadMemory
+    if (!remembered) return null
+    const slot = (instance.sprite.getData('slot') as number | undefined) ?? 0
+    const playerBody = this.player.body as Phaser.Physics.Arcade.Body
+    const moving = new Phaser.Math.Vector2(playerBody.velocity.x, playerBody.velocity.y)
+    if (moving.lengthSq() < 100) moving.set(slot % 2 === 0 ? 1 : -1, slot < 4 ? 0 : 1)
+    else moving.normalize()
+    const side = new Phaser.Math.Vector2(-moving.y, moving.x)
+    const plans = [
+      [0, 0], [220, 0], [160, 150], [160, -150], [-140, 180], [-140, -180], [340, 0],
+    ]
+    const [ahead, lateral] = plans[slot % plans.length]
+    return this.getRoadPointNear(remembered.x + moving.x * ahead + side.x * lateral, remembered.y + moving.y * ahead + side.y * lateral)
   }
 
   private runRoam(instance: ChaserInstance, delta: number) {
@@ -687,7 +751,7 @@ export default class ChaseIntroScene extends Phaser.Scene {
   // abilities / effects
   // ---------------------------------------------------------------------
 
-  private showDashLine(sprite: Phaser.Physics.Arcade.Sprite, angle: number, length: number, color: number) {
+  private showDashLine(sprite: Phaser.Physics.Arcade.Sprite, angle: number, length: number, color: number, duration = 650) {
     const x2 = sprite.x + Math.cos(angle) * length
     const y2 = sprite.y + Math.sin(angle) * length
     this.dashLine.clear()
@@ -696,7 +760,7 @@ export default class ChaseIntroScene extends Phaser.Scene {
     this.dashLine.lineStyle(1, 0xffffff, 0.8)
     this.dashLine.strokeLineShape(new Phaser.Geom.Line(sprite.x, sprite.y, x2, y2))
     this.dashLine.setVisible(true)
-    this.tweens.add({ targets: this.dashLine, alpha: 0, duration: 340, onComplete: () => {
+    this.tweens.add({ targets: this.dashLine, alpha: 0, delay: Math.max(0, duration - 220), duration: 220, onComplete: () => {
       this.dashLine.clear().setAlpha(1).setVisible(false)
     } })
   }

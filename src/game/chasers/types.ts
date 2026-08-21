@@ -31,6 +31,8 @@ export interface ChaserDefinition {
   detectionRadius: number
   broadRadius: number
   abilityCooldown: number
+  /** Five specialist chasers use a readable, telegraphed straight-line dash. */
+  hasDash?: boolean
 }
 
 export interface ChaserInstance {
