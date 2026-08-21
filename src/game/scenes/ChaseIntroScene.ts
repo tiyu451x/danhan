@@ -652,6 +652,10 @@ export default class ChaseIntroScene extends Phaser.Scene {
 
     const target = this.getChaseTarget(instance)
     if (!target) return
+    // A dash is an attack, not a navigation shortcut. Check the actual
+    // player, rather than the intercept point: the intercept point can be
+    // around a corner even though the player is plainly visible.
+    if (!this.hasLineOfSight(sprite.x, sprite.y, this.player.x, this.player.y)) return
 
     const directionTarget = this.getNextPathPoint(sprite.x, sprite.y, target.x, target.y)
     if (!directionTarget) return
@@ -663,7 +667,10 @@ export default class ChaseIntroScene extends Phaser.Scene {
     // Dashes only travel along the next graph edge. This makes the dash
     // Pac-Man-like: turn at intersections instead of cutting through blocks.
     const edgeDistance = Phaser.Math.Distance.Between(sprite.x, sprite.y, directionTarget.x, directionTarget.y)
-    const dashDistance = Math.min(Math.max(edgeDistance - 18, 48), 300)
+    // Never overshoot a junction.  Overshooting was the reason dashes
+    // frequently appeared to do nothing: Arcade immediately pushed the
+    // chaser back into the wall at the end of the segment.
+    const dashDistance = Math.min(Math.max(edgeDistance - 22, 56), 300)
     const telegraphMs = 500
     const dashSpeed = Math.max(instance.definition.chaseSpeed * 1.75, 300)
     const dashMs = (dashDistance / dashSpeed) * 1000
@@ -678,8 +685,61 @@ export default class ChaseIntroScene extends Phaser.Scene {
 
   private getNextPathPoint(fromX: number, fromY: number, toX: number, toY: number) {
     const direct = this.getRoadPointNear(toX, toY)
+    const verticalX = this.nearestRoadCenter(fromX, true)
+    const horizontalY = this.nearestRoadCenter(fromY, false)
+    const onVertical = Math.abs(fromX - verticalX) <= ROAD_W * 0.42
+    const onHorizontal = Math.abs(fromY - horizontalY) <= ROAD_W * 0.42
+
+    // Stay on the current road when the destination is already on it.
+    // The old implementation always started A* from the nearest
+    // intersection, which made a chaser cut diagonally across a block when
+    // it was halfway along a road.
+    if (onVertical && Math.abs(direct.x - verticalX) <= 2) {
+      return new Phaser.Math.Vector2(verticalX, direct.y)
+    }
+    if (onHorizontal && Math.abs(direct.y - horizontalY) <= 2) {
+      return new Phaser.Math.Vector2(direct.x, horizontalY)
+    }
+
     const fromNode = this.nearestRoadNode(fromX, fromY)
     const toNode = this.nearestRoadNode(direct.x, direct.y)
+
+    // If we are between intersections, first finish the current road
+    // segment. Pick the end of that segment that produces the shorter graph
+    // route to the destination.
+    const fromPoint = this.roadNodeToPoint(fromNode)
+    const nearIntersection = Phaser.Math.Distance.Between(fromX, fromY, fromPoint.x, fromPoint.y) < 18
+    if ((onHorizontal || onVertical) && !nearIntersection) {
+      const candidates: GridNode[] = []
+      if (onHorizontal) {
+        const row = this.nearestRoadNode(fromX, horizontalY).row
+        candidates.push(
+          { col: Math.max(0, fromNode.col - 1), row },
+          { col: Math.min(COLS, fromNode.col + 1), row },
+        )
+      } else {
+        const col = this.nearestRoadNode(verticalX, fromY).col
+        candidates.push(
+          { col, row: Math.max(0, fromNode.row - 1) },
+          { col, row: Math.min(ROWS, fromNode.row + 1) },
+        )
+      }
+      const viable = candidates
+        .filter((node, index, all) => all.findIndex((n) => n.col === node.col && n.row === node.row) === index)
+        .map((node) => ({
+          node,
+          path: this.roadPathfinder.findPath(node, toNode),
+          distance: Phaser.Math.Distance.Between(fromX, fromY, this.roadNodeToPoint(node).x, this.roadNodeToPoint(node).y),
+        }))
+        .sort((a, b) => (a.path.length * 420 + a.distance) - (b.path.length * 420 + b.distance))
+      if (viable.length > 0) {
+        const chosen = viable[0].node
+        const point = this.roadNodeToPoint(chosen)
+        // Do not reverse unless that is genuinely the shorter route.
+        if (Phaser.Math.Distance.Between(fromX, fromY, point.x, point.y) > 12) return point
+      }
+    }
+
     const path = this.roadPathfinder.findPath(fromNode, toNode)
     if (path.length <= 1) {
       const nodePoint = this.roadNodeToPoint(fromNode)
