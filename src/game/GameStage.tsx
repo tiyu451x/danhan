@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import PlaceholderCutsceneScene from './scenes/PlaceholderCutsceneScene'
 import ChaseIntroScene from './scenes/ChaseIntroScene'
+import BattleIntroScene from './scenes/BattleIntroScene'
 import MadiunOverworldScene from './scenes/MadiunOverworldScene'
 import { eventBus, type StageChangeEvent, type StageKey } from './eventBus'
 import '../styles/GameStage.css'
@@ -14,6 +15,7 @@ const STAGE_COPY: Record<StageKey, string> = {
   cutscene: 'Phaser canvas — cutscene (placeholder)',
   'chase-intro': 'Phaser canvas — chase sequence',
   overworld: 'Phaser canvas — overworld · Kota Madiun',
+  battle: 'Phaser canvas — battle handoff (placeholder)',
 }
 
 function GameStage({ onExit }: GameStageProps) {
@@ -37,7 +39,7 @@ function GameStage({ onExit }: GameStageProps) {
         width: containerRef.current.clientWidth,
         height: containerRef.current.clientHeight,
       },
-      scene: [PlaceholderCutsceneScene, ChaseIntroScene, MadiunOverworldScene],
+      scene: [PlaceholderCutsceneScene, ChaseIntroScene, BattleIntroScene, MadiunOverworldScene],
     })
 
     const handleStageChange = ({ stage: next }: StageChangeEvent) => setStage(next)
